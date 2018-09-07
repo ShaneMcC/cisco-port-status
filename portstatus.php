@@ -8,20 +8,24 @@
 	$optind = null;
 
 	// Parse CLI Arguments.
+	$short = 'hpi:d';
+	$long = ['help', 'power', 'int:', 'interface:', 'desc'];
 	if (PHP_VERSION_ID < 70100) {
-		$options = getopt('hpi:', ['help', 'power', 'int:', 'interface:']);
+		$options = getopt($short, $long);
 	} else {
-		$options = getopt('hpi:', ['help', 'power', 'int:', 'interface:'], $optind);
+		$options = getopt($short, $long, $optind);
 	}
 
 	$help = isset($options['help']) || isset($options['h']);
 	$power = isset($options['power']) || isset($options['p']);
+	$longDesc = isset($options['desc']) || isset($options['d']);
 
 	if ($help) {
 		echo 'TODO: Some kind of help...', "\n";
 		echo "\n";
 		echo '-h, --help              - Show this help.', "\n";
 		echo '-p, --power             - Include power output (Slower).', "\n";
+		echo '-d, --desc              - Show long description.', "\n";
 		echo '-i, --interface <int>   - Only show this interface.', "\n";
 		die(1);
 	}
@@ -89,7 +93,9 @@
 	$dev->connect();
 
 	echo sprintf('%-20s', 'Port');
-	echo sprintf('%-30s', 'Name');
+	if (!$longDesc) {
+		echo sprintf('%-30s', 'Name');
+	}
 	if ($vlan) {
 		echo sprintf('%-20s', 'Vlan');
 	}
@@ -100,6 +106,9 @@
 	if ($power) {
 		echo sprintf('%-30s', 'Tx Power');
 		echo sprintf('%-30s', 'Rx Power');
+	}
+	if ($longDesc) {
+		echo sprintf('%-30s', 'Description');
 	}
 	echo "\n";
 
@@ -133,12 +142,16 @@
 
 		foreach ($intdata as $int => $data) {
 			$desc = $data['desc'];
-			$desc = strlen($desc) > 28 ? substr($desc, 0, 26). '...' : $desc;
+			if (!$longDesc) {
+				$desc = strlen($desc) > 28 ? substr($desc, 0, 26). '...' : $desc;
+			}
 
 			$status = $data['status'];
 
 			echo sprintf('%-20s', $int);
-			echo sprintf('%-30s', $desc);
+			if (!$longDesc) {
+				echo sprintf('%-30s', $desc);
+			}
 			if ($vlan) {
 				$vl = isset($cont[$int]['vlan']) ? $cont[$int]['vlan'] : '--';
 				echo sprintf('%-20s', $vl);
@@ -165,6 +178,10 @@
 
 				echo sprintf('%-30s', $tx);
 				echo sprintf('%-30s', $rx);
+			}
+
+			if ($longDesc) {
+				echo sprintf('%-30s', $desc);
 			}
 			echo "\n";
 		}
