@@ -9,7 +9,7 @@
 
 	// Parse CLI Arguments.
 	$short = 'hpi:d';
-	$long = ['help', 'power', 'int:', 'interface:', 'desc'];
+	$long = ['help', 'power', 'int:', 'interface:', 'desc', 'json'];
 	if (PHP_VERSION_ID < 70100) {
 		$options = getopt($short, $long);
 	} else {
@@ -20,6 +20,8 @@
 	$power = isset($options['power']) || isset($options['p']);
 	$longDesc = isset($options['desc']) || isset($options['d']);
 
+	$json = isset($options['json']);
+
 	if ($help) {
 		echo 'TODO: Some kind of help...', "\n";
 		echo "\n";
@@ -27,6 +29,7 @@
 		echo '-p, --power             - Include power output (Slower).', "\n";
 		echo '-d, --desc              - Show long description.', "\n";
 		echo '-i, --interface <int>   - Only show this interface.', "\n";
+		echo '    --json              - Show output as JSON.', "\n";
 		die(1);
 	}
 
@@ -92,40 +95,44 @@
 
 	$dev->connect();
 
-	echo sprintf('%-20s', 'Port');
-	if (!$longDesc) {
-		echo sprintf('%-30s', 'Name');
-	}
-	if ($vlan) {
-		echo sprintf('%-20s', 'Vlan');
-	}
-	echo sprintf('%-20s', 'Status');
-	echo sprintf('%-15s', 'Duplex');
-	echo sprintf('%-10s', 'Speed');
-	echo sprintf('%-20s', 'Type');
-	if ($power) {
-		echo sprintf('%-30s', 'Tx Power');
-		echo sprintf('%-30s', 'Rx Power');
-	}
-	if ($longDesc) {
-		echo sprintf('%-30s', 'Description');
-	}
-	echo "\n";
+	if (!$json) {
+		echo sprintf('%-20s', 'Port');
+		if (!$longDesc) {
+			echo sprintf('%-30s', 'Name');
+		}
+		if ($vlan) {
+			echo sprintf('%-20s', 'Vlan');
+		}
+		echo sprintf('%-20s', 'Status');
+		echo sprintf('%-15s', 'Duplex');
+		echo sprintf('%-10s', 'Speed');
+		echo sprintf('%-20s', 'Type');
+		if ($power) {
+			echo sprintf('%-30s', 'Tx Power');
+			echo sprintf('%-30s', 'Rx Power');
+		}
+		if ($longDesc) {
+			echo sprintf('%-30s', 'Description');
+		}
+		echo "\n";
 
-	echo str_repeat('-', 20);
-	echo str_repeat('-', 30);
-	if ($vlan) {
 		echo str_repeat('-', 20);
-	}
-	echo str_repeat('-', 20);
-	echo str_repeat('-', 15);
-	echo str_repeat('-', 10);
-	echo str_repeat('-', 20);
-	if ($power) {
 		echo str_repeat('-', 30);
-		echo str_repeat('-', 30);
+		if ($vlan) {
+			echo str_repeat('-', 20);
+		}
+		echo str_repeat('-', 20);
+		echo str_repeat('-', 15);
+		echo str_repeat('-', 10);
+		echo str_repeat('-', 20);
+		if ($power) {
+			echo str_repeat('-', 30);
+			echo str_repeat('-', 30);
+		}
+		echo "\n";
 	}
-	echo "\n";
+
+	$outputInfo = [];
 
 	while ($i = array_shift($interfaces)) {
 
@@ -141,22 +148,24 @@
 		}
 
 		foreach ($intdata as $int => $data) {
+			$outputLine = [];
+
 			$desc = $data['desc'];
-			if (!$longDesc) {
+			if (!$longDesc && !$json) {
 				$desc = strlen($desc) > 28 ? substr($desc, 0, 26). '...' : $desc;
 			}
 
 			$status = $data['status'];
 
-			echo sprintf('%-20s', $int);
-			if (!$longDesc) {
-				echo sprintf('%-30s', $desc);
+			$outputLine['int'] = sprintf('%-20s', $int);
+			if (!$longDesc && !$json) {
+				$outputLine['desc'] = sprintf('%-30s', $desc);
 			}
 			if ($vlan) {
 				$vl = isset($cont[$int]['vlan']) ? $cont[$int]['vlan'] : '--';
-				echo sprintf('%-20s', $vl);
+				$outputLine['vlan'] = sprintf('%-20s', $vl);
 			}
-			echo sprintf('%-20s', $status);
+			$outputLine['status'] = sprintf('%-20s', $status);
 
 			$duplex = '--';
 			$speed = '--';
@@ -168,21 +177,32 @@
 				$type = isset($cont[$int]['Part number']) ? $cont[$int]['Part number'] : '--';
 			}
 
-			echo sprintf('%-15s', $duplex);
-			echo sprintf('%-10s', $speed);
-			echo sprintf('%-20s', $type);
+			$outputLine['duplex'] = sprintf('%-15s', $duplex);
+			$outputLine['speed'] = sprintf('%-10s', $speed);
+			$outputLine['type'] = sprintf('%-20s', $type);
 
 			if ($power) {
 				$tx = isset($powerData[$int]['Tx Power']) ? $powerData[$int]['Tx Power'] : '--';
 				$rx = isset($powerData[$int]['Rx Power']) ? $powerData[$int]['Rx Power'] : '--';
 
-				echo sprintf('%-30s', $tx);
-				echo sprintf('%-30s', $rx);
+				$outputLine['tx'] = sprintf('%-30s', $tx);
+				$outputLine['rx'] = sprintf('%-30s', $rx);
 			}
 
-			if ($longDesc) {
-				echo sprintf('%-30s', $desc);
+			if ($longDesc || $json) {
+				$outputLine['desc'] = sprintf('%-30s', $desc);
 			}
-			echo "\n";
+
+			// Trim trailing spaces for json, or just echo for normal output.
+			foreach ($outputLine as &$line) {
+				if ($json) { $line = trim($line); } else { echo $line; }
+			}
+
+			if ($json) { $outputInfo[] = $outputLine; } else { echo "\n"; }
 		}
+	}
+
+
+	if ($json) {
+		echo json_encode($outputInfo, JSON_PRETTY_PRINT), "\n";
 	}
