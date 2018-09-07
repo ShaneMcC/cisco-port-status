@@ -1,0 +1,3 @@
+[submodule "phprouter"]
+	path = phprouter
+	url = http://github.com/ShaneMcC/phprouter
