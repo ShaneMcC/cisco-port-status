@@ -2,7 +2,7 @@
 
 PHP Script originally to log into IOS-XR and show a `show int status` style output, also supports IOS normal for consistency.
 
-Routers the script knows how to log into are defined in `routers.ini` (see `routers.ini.example`)
+Routers the script knows how to log into are defined in `routers.ini` (see `routers.ini.example`), also make sure to check out the submodules: `git submodule update --init --recursive`
 
 You can add TX/RX Power columns with `--power`, and only check specific interfaces with `--int`.
 
